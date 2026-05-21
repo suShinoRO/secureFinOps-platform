@@ -28,6 +28,7 @@ build/
 ### VS Code ###
 .vscode/
 .target/
+
 ### Terraform ###
 *.tfstate
 *.tfstate.backup
@@ -35,6 +36,7 @@ build/
 .terraform.lock.hcl
 terraform.tfvars
 *.tfvars
+
 ### env ###
 .env
 *.env
