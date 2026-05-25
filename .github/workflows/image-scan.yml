@@ -32,7 +32,7 @@ jobs:
           docker build -t securefinops/transaction-service:${{ github.sha }} .
 
       - name: Trivy image scan - table
-        uses: aquasecurity/trivy-actionv@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'image'
           image-ref: 'securefinops/transaction-service:${{ github.sha }}'
