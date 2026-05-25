@@ -14,5 +14,4 @@ set -a
 source "$ROOT_DIR/.env"
 set +a
 
-mvn spring-boot:run \
-  -Dspring-boot.run.jvmArguments="-DDB_USER=$DB_USER -DDB_PASSWORD=$DB_PASSWORD"
+mvn spring-boot:run 

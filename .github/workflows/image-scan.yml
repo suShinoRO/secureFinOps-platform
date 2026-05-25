@@ -1,0 +1,58 @@
+name: Image Scan - Trivy
+
+on:
+  push:
+    branches: [ main, ci-branch ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-scan:
+    name: Build and Trivy Image Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      - name: Build Docker image
+        run: |
+          docker build -t securefinops/transaction-service:${{ github.sha }} .
+
+      - name: Trivy image scan - table
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: 'image'
+          image-ref: 'securefinops/transaction-service:${{ github.sha }}'
+          format: 'table'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: Trivy image scan - JSON report
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: 'image'
+          image-ref: 'securefinops/transaction-service:${{ github.sha }}'
+          format: 'json'
+          output: 'trivy-image-results.json'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+
+      - name: Upload image scan report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-image-scan-report
+          path: trivy-image-results.json
