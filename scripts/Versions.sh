@@ -1,0 +1,2 @@
+echo TOMCAT_NEW_VERSION: $(curl -s "https://repo.maven.apache.org/maven2/org/apache/tomcat/embed/tomcat-embed-core/maven-metadata.xml" | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | sort -V | tail -1)
+echo POSTGRESQL_NEW_VERSION: $(curl -s "https://repo.maven.apache.org/maven2/org/postgresql/postgresql/maven-metadata.xml" | grep -o '<version>[^<]*</version>' | sed 's/<[^>]*>//g' | sort -V | tail -1)
