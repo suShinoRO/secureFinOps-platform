@@ -18,3 +18,10 @@ module "postgres" {
   db_password = var.db_password
   db_port     = 5432
 }
+
+module "jenkins" {
+  source = "../../modules/jenkins"
+
+  environment  = "local"
+  jenkins_port = 8081
+}

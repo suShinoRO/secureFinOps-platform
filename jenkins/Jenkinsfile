@@ -1,0 +1,159 @@
+pipeline {
+    agent any # any agent available
+
+    environment {
+        APP_NAME    = 'transaction-service'
+        IMAGE_NAME  = "securefinops/${APP_NAME}"
+        IMAGE_TAG   = "${BUILD_NUMBER}" 
+    }
+    stages {
+
+        # STAGE 1
+        stage('Checkout') {
+            steps {
+                checkout scm # scm = Source Control Management
+                echo "Checked out branch: ${env.BRANCH_NAME}"
+            }
+        }
+
+        # STAGE 2
+        stage('Build JAR') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+
+        # STAGE 3
+        stage('Unit Tests') {
+            steps {
+                sh 'mvn test'
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        # STAGE 4
+        stage('SAST - Semgrep') {
+            steps {
+                sh '''
+                    pip install semgrep --quiet
+                    semgrep scan \
+                        --config p/java \
+                        --config p/owasp-top-ten \
+                        --config p/secrets \
+                        --json \
+                        --output semgrep-results.json \
+                        src/ || true
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'semgrep-results.json',
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        # STAGE 5
+        stage('SCA - Trivy Filesystem') {
+            steps {
+                sh '''
+                    which trivy || (
+                        curl -sfL https:#raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+                        | sh -s -- -b /usr/local/bin
+                    )
+                    trivy fs \
+                        --severity HIGH,CRITICAL \
+                        --format json \
+                        --output trivy-fs-results.json \
+                        . || true
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-fs-results.json',
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        # STAGE 6
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                    docker build \
+                        -t ${IMAGE_NAME}:${IMAGE_TAG} \
+                        -t ${IMAGE_NAME}:latest \
+                        .
+                """
+            }
+        }
+
+        # STAGE 7
+        stage('Image Scan - Trivy') {
+            steps {
+                sh """
+                    trivy image \
+                        --severity HIGH,CRITICAL \
+                        --format json \
+                        --output trivy-image-results.json \
+                        ${IMAGE_NAME}:${IMAGE_TAG} || true
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-results.json',
+                                     allowEmptyArchive: true
+                }
+            }
+        }
+
+        # CD STAGES
+
+        # STAGE 8
+        stage('Deploy Staging') {
+            steps {
+                sh """
+                    docker stop ${APP_NAME}-staging || true
+                    docker rm ${APP_NAME}-staging || true
+
+                    docker run -d \
+                        --name ${APP_NAME}-staging \
+                        --network bridge \
+                        -p 8082:8080 \
+                        -e DB_USER=${DB_USER} \
+                        -e DB_PASSWORD=${DB_PASSWORD} \
+                        ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        # STAGE 9
+        stage('Health Check') {
+            steps {
+                sleep(20)
+                sh '''
+                    curl -f http:#localhost:8082/actuator/health || \
+                    (echo "Health check failed" && exit 1)
+                '''
+            }
+        }
+
+    }
+    # Stage 10
+    post {
+        success {
+            echo "Pipeline SUCCESS - Build ${BUILD_NUMBER}"
+        }
+        failure {
+            echo "Pipeline FAILED - Build ${BUILD_NUMBER}"
+            # Email notifications
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
