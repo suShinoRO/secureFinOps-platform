@@ -1,29 +1,27 @@
 pipeline {
-    agent any # any agent available
+    agent any
 
     environment {
-        APP_NAME    = 'transaction-service'
-        IMAGE_NAME  = "securefinops/${APP_NAME}"
-        IMAGE_TAG   = "${BUILD_NUMBER}" 
+        APP_NAME  = 'transaction-service'
+        IMAGE_NAME = "securefinops/${APP_NAME}"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
     }
+
     stages {
 
-        # STAGE 1
         stage('Checkout') {
             steps {
-                checkout scm # scm = Source Control Management
+                checkout scm
                 echo "Checked out branch: ${env.BRANCH_NAME}"
             }
         }
 
-        # STAGE 2
         stage('Build JAR') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        # STAGE 3
         stage('Unit Tests') {
             steps {
                 sh 'mvn test'
@@ -35,7 +33,6 @@ pipeline {
             }
         }
 
-        # STAGE 4
         stage('SAST - Semgrep') {
             steps {
                 sh '''
@@ -57,12 +54,11 @@ pipeline {
             }
         }
 
-        # STAGE 5
         stage('SCA - Trivy Filesystem') {
             steps {
                 sh '''
                     which trivy || (
-                        curl -sfL https:#raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
                         | sh -s -- -b /usr/local/bin
                     )
                     trivy fs \
@@ -80,7 +76,6 @@ pipeline {
             }
         }
 
-        # STAGE 6
         stage('Build Docker Image') {
             steps {
                 sh """
@@ -92,7 +87,6 @@ pipeline {
             }
         }
 
-        # STAGE 7
         stage('Image Scan - Trivy') {
             steps {
                 sh """
@@ -111,15 +105,11 @@ pipeline {
             }
         }
 
-        # CD STAGES
-
-        # STAGE 8
         stage('Deploy Staging') {
             steps {
                 sh """
                     docker stop ${APP_NAME}-staging || true
                     docker rm ${APP_NAME}-staging || true
-
                     docker run -d \
                         --name ${APP_NAME}-staging \
                         --network bridge \
@@ -131,26 +121,24 @@ pipeline {
             }
         }
 
-        # STAGE 9
         stage('Health Check') {
             steps {
                 sleep(20)
                 sh '''
-                    curl -f http:#localhost:8082/actuator/health || \
+                    curl -f http://localhost:8082/actuator/health || \
                     (echo "Health check failed" && exit 1)
                 '''
             }
         }
 
     }
-    # Stage 10
+
     post {
         success {
             echo "Pipeline SUCCESS - Build ${BUILD_NUMBER}"
         }
         failure {
             echo "Pipeline FAILED - Build ${BUILD_NUMBER}"
-            # Email notifications
         }
         always {
             cleanWs()
