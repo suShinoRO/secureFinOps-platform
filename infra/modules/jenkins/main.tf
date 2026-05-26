@@ -14,6 +14,10 @@ resource "docker_image" "jenkins" {
 
 resource "docker_volume" "jenkins_home" {
   name = "securefinops-jenkins-home-${var.environment}"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "docker_container" "jenkins" {
