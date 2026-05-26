@@ -1,6 +1,16 @@
 pipeline {
     agent any
 
+     tools {
+        maven 'Maven-3.9'
+    }
+
+    environment {
+        APP_NAME   = 'transaction-service'
+        IMAGE_NAME = "securefinops/${APP_NAME}"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
+    }
+
     environment {
         APP_NAME  = 'transaction-service'
         IMAGE_NAME = "securefinops/${APP_NAME}"
