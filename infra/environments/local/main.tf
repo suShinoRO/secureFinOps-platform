@@ -21,7 +21,8 @@ module "postgres" {
 
 module "jenkins" {
   source = "../../modules/jenkins"
-
+  
   environment  = "local"
-  jenkins_port = 8081
+  jenkins_port = var.jenkins_port
+  network_name = module.postgres.network_name
 }

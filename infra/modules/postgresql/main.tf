@@ -38,6 +38,10 @@ resource "docker_container" "postgres" {
     container_path = "/var/lib/postgresql/data"
   }
 
+  networks_advanced {
+    name = docker_network.securefinops_network.name
+  }
+
   restart = "unless-stopped"
 }
 
@@ -45,14 +49,6 @@ resource "docker_volume" "postgres_data" {
   name = "securefinops-postgres-data-${var.environment}"
 }
 
-output "postgres_host" {
-  value = "localhost"
-}
-
-output "postgres_port" {
-  value = var.db_port
-}
-
-output "postgres_db" {
-  value = var.db_name
+resource "docker_network" "securefinops_network" {
+  name = "securefinops-network"
 }

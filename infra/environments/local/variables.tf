@@ -15,3 +15,9 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "jenkins_port"{
+  description = "Jenkins port"
+  type        = number
+  default     = 8081
+}

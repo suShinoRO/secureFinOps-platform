@@ -44,5 +44,9 @@ resource "docker_container" "jenkins" {
     container_path = "/var/run/docker.sock"
   }
 
+  networks_advanced {
+    name = var.network_name
+  }
+
   restart = "unless-stopped"
 }
