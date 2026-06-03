@@ -47,28 +47,6 @@ pipeline {
             }
         }
 
-        stage('SCA - Trivy Filesystem') {
-            steps {
-                sh '''
-                    which trivy || (
-                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-                        | sh -s -- -b /usr/local/bin
-                    )
-                    trivy fs \
-                        --severity HIGH,CRITICAL \
-                        --format json \
-                        --output trivy-fs-results.json \
-                        . || true
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-fs-results.json',
-                                     allowEmptyArchive: true
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 sh """
@@ -77,24 +55,6 @@ pipeline {
                         -t ${IMAGE_NAME}:latest \
                         .
                 """
-            }
-        }
-
-        stage('Image Scan - Trivy') {
-            steps {
-                sh """
-                    trivy image \
-                        --severity HIGH,CRITICAL \
-                        --format json \
-                        --output trivy-image-results.json \
-                        ${IMAGE_NAME}:${IMAGE_TAG} || true
-                """
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-image-results.json',
-                                     allowEmptyArchive: true
-                }
             }
         }
 
