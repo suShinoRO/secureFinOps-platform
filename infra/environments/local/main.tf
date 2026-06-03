@@ -25,4 +25,4 @@ module "jenkins" {
   environment  = "local"
   jenkins_port = var.jenkins_port
   network_name = module.postgres.network_name
-}
+} 
