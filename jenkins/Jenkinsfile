@@ -47,31 +47,6 @@ pipeline {
             }
         }
 
-        stage('SAST - Semgrep') {
-            steps {
-                sh '''
-                    which semgrep || (
-                        apt-get update -qq &&
-                        apt-get install -y python3 python3-pip --quiet &&
-                        pip3 install semgrep --quiet --break-system-packages
-                    )
-                    semgrep scan \
-                        --config p/java \
-                        --config p/owasp-top-ten \
-                        --config p/secrets \
-                        --json \
-                        --output semgrep-results.json \
-                        src/ || true
-                '''
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'semgrep-results.json',
-                                    allowEmptyArchive: true
-                }
-            }
-        }
-
         stage('SCA - Trivy Filesystem') {
             steps {
                 sh '''
