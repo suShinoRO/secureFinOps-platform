@@ -28,7 +28,17 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
-                sh 'mvn test -Dspring.datasource.url=jdbc:postgresql://securefinops-postgres-local:5432/transactiondb'
+                   withCredentials([
+                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
+                    string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD')
+                ]) {
+                    sh '''
+                        mvn test \
+                            -Dspring.datasource.url=jdbc:postgresql://securefinops-postgres-local:5432/transactiondb \
+                            -Dspring.datasource.username=${DB_USER} \
+                            -Dspring.datasource.password=${DB_PASSWORD}
+                    '''
+                }
             }
             post {
                 always {
