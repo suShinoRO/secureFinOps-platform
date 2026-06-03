@@ -50,7 +50,11 @@ pipeline {
         stage('SAST - Semgrep') {
             steps {
                 sh '''
-                    pip install semgrep --quiet
+                    which semgrep || (
+                        curl -fsSL https://github.com/semgrep/semgrep/releases/latest/download/semgrep-linux-x86_64 \
+                        -o /usr/local/bin/semgrep && \
+                        chmod +x /usr/local/bin/semgrep
+                    )
                     semgrep scan \
                         --config p/java \
                         --config p/owasp-top-ten \
@@ -63,7 +67,7 @@ pipeline {
             post {
                 always {
                     archiveArtifacts artifacts: 'semgrep-results.json',
-                                     allowEmptyArchive: true
+                                    allowEmptyArchive: true
                 }
             }
         }
