@@ -48,7 +48,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Pull Security Images') {
             steps {
                 sh '''
@@ -62,7 +62,7 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm \
-                        -v $(pwd):/src \
+                        -v ${WORKSPACE}:/src \
                         semgrep/semgrep:latest \
                         semgrep scan \
                             --config p/java \
@@ -73,19 +73,13 @@ pipeline {
                             /src || true
                 '''
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'semgrep-results.json',
-                                    allowEmptyArchive: true
-                }
-            }
         }
 
         stage('SCA - Trivy Filesystem') {
             steps {
                 sh '''
                     docker run --rm \
-                        -v $(pwd):/src \
+                        -v ${WORKSPACE}:/src \
                         aquasec/trivy:latest \
                         fs \
                             --format json \
@@ -94,13 +88,8 @@ pipeline {
                             /src || true
                 '''
             }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-fs-results.json',
-                                    allowEmptyArchive: true
-                }
-            }
         }
+        
         stage('Build Docker Image') {
             steps {
                 sh """
