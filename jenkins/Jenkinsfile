@@ -62,30 +62,35 @@ pipeline {
 
         stage('Deploy Staging') {
             steps {
-                sh """
-                    docker stop ${APP_NAME}-staging || true
-                    docker rm ${APP_NAME}-staging || true
-                    docker run -d \
-                        --name ${APP_NAME}-staging \
-                        --network bridge \
-                        -p 8082:8080 \
-                        -e DB_USER=${DB_USER} \
-                        -e DB_PASSWORD=${DB_PASSWORD} \
-                        ${IMAGE_NAME}:${IMAGE_TAG}
-                """
+                withCredentials([
+                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
+                    string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD')
+                ]) { 
+                    sh """
+                        docker stop ${APP_NAME}-staging || true
+                        docker rm ${APP_NAME}-staging || true
+                        docker run -d \
+                            --name ${APP_NAME}-staging \
+                            --network securefinops-network \
+                            -p 8082:8080 \
+                            -e DB_USER=${DB_USER} \
+                            -e DB_PASSWORD=${DB_PASSWORD} \
+                            -e SPRING_DATASOURCE_URL=jdbc:postgresql://securefinops-postgres-local:5432/transactiondb \
+                            ${IMAGE_NAME}:${IMAGE_TAG}
+                    """
+                }
             }
         }
 
-        stage('Health Check') {
+        stage('Health Check - staging') {
             steps {
                 sleep(20)
                 sh '''
-                    curl -f http://localhost:8082/actuator/health || \
+                    curl -f http://transaction-service-staging:8080/actuator/health || \
                     (echo "Health check failed" && exit 1)
                 '''
             }
         }
-
     }
 
     post {
