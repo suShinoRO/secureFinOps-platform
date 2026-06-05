@@ -89,7 +89,7 @@ pipeline {
                 '''
             }
         }
-        
+
         stage('Build Docker Image') {
             steps {
                 sh """
@@ -98,6 +98,30 @@ pipeline {
                         -t ${IMAGE_NAME}:latest \
                         .
                 """
+            }
+        }
+
+        stage('Image Scan - Trivy') {
+            steps {
+                sh """
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v ${WORKSPACE}:/src \
+                        -v trivy-cache:/root/.cache/trivy \
+                        aquasec/trivy:latest \
+                        image \
+                            --format json \
+                            --output /src/trivy-image-results.json \
+                            --severity HIGH,CRITICAL \
+                            --exit-code 0 \
+                            ${IMAGE_NAME}:${IMAGE_TAG}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-results.json',
+                                    allowEmptyArchive: true
+                }
             }
         }
 
