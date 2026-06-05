@@ -49,12 +49,21 @@ pipeline {
             }
         }
 
+        stage('Pull Security Images') {
+            steps {
+                sh '''
+                    docker pull semgrep/semgrep:canary-nonroot
+                    docker pull aquasec/trivy:canary
+                '''
+            }
+        }
+        
         stage('SAST - Semgrep') {
             steps {
                 sh '''
                     docker run --rm \
                         -v $(pwd):/src \
-                        returntocorp/semgrep \
+                        semgrep/semgrep \
                         semgrep scan \
                             --config p/java \
                             --config p/owasp-top-ten \
