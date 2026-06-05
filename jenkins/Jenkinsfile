@@ -9,6 +9,8 @@ pipeline {
         APP_NAME  = 'transaction-service'
         IMAGE_NAME = "securefinops/${APP_NAME}"
         IMAGE_TAG  = "${BUILD_NUMBER}"
+        GIT_COMMIT = "${GIT_COMMIT}"
+        GIT_BRANCH = "${GIT_BRANCH}"
     }
 
     stages {
@@ -88,10 +90,18 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline SUCCESS - Build ${BUILD_NUMBER}"
+            echo "Pipeline SUCCESS:"
+            echo "IMAGE_NAME --- ${IMAGE_NAME}"
+            echo "Build -------- ${BUILD_NUMBER}"
+            echo "Commit ------- ${GIT_COMMIT}"
+            echo "Branch ------- ${GIT_BRANCH}"
         }
         failure {
-            echo "Pipeline FAILED - Build ${BUILD_NUMBER}"
+            echo "Pipeline FAILED:"
+            echo "IMAGE_NAME --- ${IMAGE_NAME}"
+            echo "Build -------- ${BUILD_NUMBER}"
+            echo "Commit ------- ${GIT_COMMIT}"
+            echo "Branch ------- ${GIT_BRANCH}"
         }
         always {
             cleanWs()

@@ -8,7 +8,11 @@ terraform {
 }
 
 resource "docker_image" "jenkins" {
-  name         = "jenkins/jenkins:lts-jdk21"
+  name = "securefinops-jenkins:local"
+  build {
+    context    = path.module
+    dockerfile = "Dockerfile"
+  }
   keep_locally = true
 }
 
