@@ -95,18 +95,20 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline SUCCESS:"
-            echo "IMAGE_NAME --- ${IMAGE_NAME}"
-            echo "Build -------- ${BUILD_NUMBER}"
-            echo "Commit ------- ${GIT_COMMIT}"
-            echo "Branch ------- ${GIT_BRANCH}"
+            echo """ Pipeline SUCCESS:
+                IMAGE_NAME --- ${IMAGE_NAME}
+                Build -------- ${BUILD_NUMBER}
+                Commit ------- ${GIT_COMMIT}
+                Branch ------- ${GIT_BRANCH}
+            """
         }
         failure {
-            echo "Pipeline FAILED:"
-            echo "IMAGE_NAME --- ${IMAGE_NAME}"
-            echo "Build -------- ${BUILD_NUMBER}"
-            echo "Commit ------- ${GIT_COMMIT}"
-            echo "Branch ------- ${GIT_BRANCH}"
+            echo """ Pipeline FAILED:
+                IMAGE_NAME --- ${IMAGE_NAME}
+                Build -------- ${BUILD_NUMBER}
+                Commit ------- ${GIT_COMMIT}
+                Branch ------- ${GIT_BRANCH}
+            """
         }
         always {
             cleanWs()
