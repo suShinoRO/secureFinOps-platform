@@ -201,17 +201,17 @@ pipeline {
                     <p><b>Console:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
                 """,
                 mimeType: 'text/html',
-                to: 'sushinoro@gmail.com',
+                to: "${NOTIFICATION_EMAIL}",
                 attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json'
             )
-            /*cleanWs(
+            cleanWs(
                 cleanWhenSuccess: true,
                 cleanWhenFailure: true,
                 cleanWhenAborted: true,
                 deleteDirs: true,
                 notFailBuild: true,
                 patterns: [[pattern: '.git', type: 'EXCLUDE']]
-            )*/
+            )
         }
     }
 }
