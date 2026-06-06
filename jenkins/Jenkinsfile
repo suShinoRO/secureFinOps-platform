@@ -69,7 +69,7 @@ pipeline {
                             --config p/secrets \
                             --json \
                             --output /src/semgrep-results.json \
-                            /src || true
+                            /src
                 '''
             }
         }
@@ -85,7 +85,7 @@ pipeline {
                             --format json \
                             --output /src/trivy-fs-results.json \
                             --severity HIGH,CRITICAL \
-                            /src || true
+                            /src
                 '''
             }
         }
@@ -190,20 +190,26 @@ pipeline {
             """
         }
         always {
-            emailext (
-                subject: "${currentBuild.result} - ${JOB_NAME} #${BUILD_NUMBER}",
-                body: """
-                    <h2>Pipeline ${currentBuild.result}</h2>
-                    <p><b>Job:</b> ${JOB_NAME}</p>
-                    <p><b>Build:</b> #${BUILD_NUMBER}</p>
-                    <p><b>Branch:</b> ${GIT_BRANCH}</p>
-                    <p><b>Commit:</b> ${GIT_COMMIT}</p>
-                    <p><b>Console:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
-                """,
-                mimeType: 'text/html',
-                to: "${NOTIFICATION_EMAIL}",
-                attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json'
-            )
+            script {
+                def buildLog = currentBuild.rawBuild.getLog(1000).join('\n')
+                writeFile file: 'pipeline-report.txt', text: buildLog
+            }
+            withCredentials([
+                string(credentialsId: 'NOTIFICATION_EMAIL', variable: 'NOTIFICATION_EMAIL')
+            ]) {
+                emailext (
+                    subject: "${currentBuild.result} - ${JOB_NAME} #${BUILD_NUMBER}",
+                    body: """
+                        <h2>Pipeline ${currentBuild.result}</h2>
+                        <p><b>Job:</b> ${JOB_NAME}</p>
+                        <p><b>Build:</b> #${BUILD_NUMBER}</p>
+                        <p><b>Console:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                    """,
+                    mimeType: 'text/html',
+                    to: "${NOTIFICATION_EMAIL}",
+                    attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json,pipeline-report.txt'
+                )
+            }
             cleanWs(
                 cleanWhenSuccess: true,
                 cleanWhenFailure: true,
@@ -212,6 +218,6 @@ pipeline {
                 notFailBuild: true,
                 patterns: [[pattern: '.git', type: 'EXCLUDE']]
             )
-        }
+            }
     }
 }
