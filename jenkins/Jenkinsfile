@@ -9,8 +9,6 @@ pipeline {
         APP_NAME  = 'transaction-service'
         IMAGE_NAME = "securefinops/${APP_NAME}"
         IMAGE_TAG  = "${BUILD_NUMBER}"
-        GIT_COMMIT = "${GIT_COMMIT}"
-        GIT_BRANCH = "${GIT_BRANCH}"
     }
 
     stages {
@@ -60,6 +58,7 @@ pipeline {
 
         stage('SAST - Semgrep') {
             steps {
+                // testing purpose, for production remove "|| true" to fail the build on Semgrep findings
                 sh '''
                     docker run --rm \
                         -v ${WORKSPACE}:/src \
@@ -77,6 +76,7 @@ pipeline {
 
         stage('SCA - Trivy Filesystem') {
             steps {
+                // testing purpose, for production remove "|| true" to fail the build on Trivy findings
                 sh '''
                     docker run --rm \
                         -v ${WORKSPACE}:/src \
@@ -116,6 +116,14 @@ pipeline {
                             --exit-code 0 \
                             ${IMAGE_NAME}:${IMAGE_TAG}
                 """
+                sh """
+                    CRITICAL=\$(grep -c '"Severity":"CRITICAL"' ${WORKSPACE}/trivy-image-results.json || true)
+                    echo "Critical vulnerabilities found: \$CRITICAL"
+                    if [ "\$CRITICAL" -gt "0" ]; then
+                        echo "CRITICAL vulnerabilities detected - failing build!"
+                        exit 1
+                    fi
+                """
             }
             post {
                 always {
@@ -149,11 +157,17 @@ pipeline {
 
         stage('Health Check - staging') {
             steps {
-                sleep(20)
-                sh '''
-                    curl -f http://transaction-service-staging:8080/actuator/health || \
-                    (echo "Health check failed" && exit 1)
-                '''
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitUntil(initialRecurrencePeriod: 5000) {
+                        script {
+                            def result = sh(
+                                script: 'curl -sf http://transaction-service-staging:8080/actuator/health',
+                                returnStatus: true
+                            )
+                            return result == 0
+                        }
+                    }
+                }
             }
         }
     }
@@ -176,7 +190,27 @@ pipeline {
             """
         }
         always {
-            cleanWs()
+            emailext (
+                subject: "${currentBuild.result} - ${JOB_NAME} #${BUILD_NUMBER}",
+                body: """
+                    <h2>Pipeline ${currentBuild.result}</h2>
+                    <p><b>Job:</b> ${JOB_NAME}</p>
+                    <p><b>Build:</b> #${BUILD_NUMBER}</p>
+                    <p><b>Branch:</b> ${GIT_BRANCH}</p>
+                    <p><b>Commit:</b> ${GIT_COMMIT}</p>
+                    <p><b>Console:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                """,
+                mimeType: 'text/html',
+                to: 'sushinoro@gmail.com',
+                attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json'
+            )
+            cleanWs(
+                cleanWhenSuccess: true,
+                cleanWhenFailure: true,
+                cleanWhenAborted: true,
+                deleteDirs: true,
+                notFailBuild: true,
+                patterns: [[pattern: '.git', type: 'EXCLUDE']]
+            )
         }
     }
-}
