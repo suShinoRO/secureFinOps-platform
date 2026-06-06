@@ -1,0 +1,3 @@
+db_name     = "DB_NAME"
+db_user     = "USER_NAME"
+db_password = "PASSWORD"

@@ -1,13 +1,13 @@
 variable "db_name" {
   description = "PostgreSQL database name"
   type        = string
-  default     = "transactiondb"
+  sensitive   = true
 }
 
 variable "db_user" {
   description = "PostgreSQL username"
   type        = string
-  default     = "securefinops"
+  sensitive   = true
 }
 
 variable "db_password" {
