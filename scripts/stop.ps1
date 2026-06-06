@@ -1,0 +1,71 @@
+$ErrorActionPreference = "Stop"
+ 
+$RootDir = Resolve-Path "$PSScriptRoot\.."
+ 
+Write-Host "==> Stopping application..." -ForegroundColor Cyan
+$process = Get-Process -Name "java" -ErrorAction SilentlyContinue
+if ($process) {
+    $process | Stop-Process -Force
+    Write-Host "Application stopped." -ForegroundColor Green
+} else {
+    Write-Host "Application not running." -ForegroundColor Yellow
+}
+ 
+Write-Host "==> Destroying infrastructure..." -ForegroundColor Cyan
+Set-Location "$RootDir\infra\environments\local"
+terraform destroy -auto-approve
+ 
+Write-Host "==> Done. All resources destroyed." -ForegroundColor Green
+# SIG # Begin signature block
+# MIIJcgYJKoZIhvcNAQcCoIIJYzCCCV8CAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXDNjX0TMFLfvZlU/txToQeWS
+# oYqgggW/MIIFuzCCA6OgAwIBAgIUdPDxcYbqOT8kxf8weg00WAQvamYwDQYJKoZI
+# hvcNAQELBQAwZDELMAkGA1UEBhMCUm8xDTALBgNVBAgMBEhvbWUxDTALBgNVBAcM
+# BEhvbWUxFTATBgNVBAoMDHN1U2hpbm9Sby1DQTEMMAoGA1UECwwDU2VjMRIwEAYD
+# VQQDDAlzdXNoaW5vcm8wHhcNMjYwMjE4MjA1MjQxWhcNMzYwMjE2MjA1MjQxWjA4
+# MRIwEAYDVQQDDAlDcmlzdGlhbkMxIjAgBgkqhkiG9w0BCQEWE25vZW1haWxAbm9l
+# bWFpbC5jb20wggIiMA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQClGrJhmNjt
+# +txTTyU9tH6CjLv7MQMXU8L1Bu8D2ybs9/xptHH425V3vhBwbtAF7vtYMgCaa9qn
+# JvcrVX1PkQ1Xe32VFM7lFJgYQmynIWvUu3YNtD7U7gzzt26LAu0DmENKLgvl0Yos
+# fY5g1EO9yupweLYxmLVV3skyYis3IzDoK6htLRyhNgBB93M8BiTPiWpWV1Y5knqb
+# vZROv8gc9rJ0ure0dOB1i34ykRDje06yoGU3FO8psWXutgrw/GPG5pd+XAU3RNQU
+# KQzpKfgTUMklS5wrNxZBJm8pmlROWMzwJzSm8ZvI4/GBWQ4moL83B45qhVXvRcqF
+# 1jmjcS63YUPiC1ePp2EcpnfDm5ejauzO26R9GcxMZ7cYSNZES+OvuKEQ4FQOv2jH
+# dT4aIRUr7/oMwXApGLGRhqT58ofwBF3qxQTydTc726zFlEkupjjQZdJqTx+BbN0W
+# PvRpf7zvUsc2x0QWrz60wuihdfY4c3Hwt0zK0fGLk29DAuSAcLF6/fPvK5wIF/8A
+# v4+L7qlCVP0MtutsByiX5vIm/6WmZlZPJ8+KSEWNX2xFkxd34cBQxSXHEmDLe2Fq
+# eqiLV9vv5YRHq34+UoEB2DO0CYoTSHMbL+w8qdT6y6ODkvHdjv6LP62j5pNEsz7j
+# 2a3fOOQAXsArACdxIhOMwjrf1OrbOlij+QIDAQABo4GQMIGNMB8GA1UdIwQYMBaA
+# FHv0FnxK2BIXZhlO+BeYWcmnxiV1MAkGA1UdEwQCMAAwCwYDVR0PBAQDAgTwMDMG
+# A1UdJQQsMCoGCCsGAQUFBwMDBggrBgEFBQcDAgYIKwYBBQUHAwQGCisGAQQBgjcK
+# AwwwHQYDVR0OBBYEFN3wgb4SWk3jk2k9PQR5rUvSUXjFMA0GCSqGSIb3DQEBCwUA
+# A4ICAQCh/Vbw5kZV+ZSm00F9G61naU9tqEg5AvrykBGOOXrU8ipbJ3YZSidJuV+O
+# rI0sDE7qp4temYy4RY5UwFS/fhFqQEQWTh2WDiGupJJ1I6qdWr3V8uZgDVVIGgdj
+# Cm/7V534u8/vdSYRSb6FcLCglArUU1TenzCKwi0i4QKPzTf06FxdbnmbQ6626tgC
+# kJoAtDLal8JiKUKF69+AEs00tpOJjPMZ0PhV56OYY/6dSWtSKcUvLfNNLS6W7EO8
+# 60ZJ1aD3xDzqqGsJ2/kE0nu7flryLZQH4R3H0XweVEXDzW72+or82HQdNTTw6ehr
+# o5yRZkeyDs1EZ7GSfm5MQI8Z5hRhIGJTG8VE/ZNUIaEpq9Pl5OFYL2rporR++FPE
+# vUY60l0Ct/fjFVNf8Vif1hgrR5MtZJl3gIGR6zzt/8ADgoG9Ug76aDfLAvpHacTN
+# vFdNQFxH/X3NN9BmQxvo9ZaPV1QWghbaOrP1WMGt+zx0JnyDbOdR1XB09hO9j3/u
+# ztIZy58tsVpPx7AX2zG87mwd1hlw0iHfESTqxc3Xu3JFaaOdtIu3HTrn/9Zfc0V2
+# Ny2rdr3ZXXUbTTvzu+f2A55bw7C8PVzIvgYPV+PTTZdxWWIVLpEaY2xqdTMZR/Ew
+# ZHwUrQD610slkPyXv4eHYKBhZ5vSbQipXcj9ZNolQ1sv+ygG5TGCAx0wggMZAgEB
+# MHwwZDELMAkGA1UEBhMCUm8xDTALBgNVBAgMBEhvbWUxDTALBgNVBAcMBEhvbWUx
+# FTATBgNVBAoMDHN1U2hpbm9Sby1DQTEMMAoGA1UECwwDU2VjMRIwEAYDVQQDDAlz
+# dXNoaW5vcm8CFHTw8XGG6jk/JMX/MHoNNFgEL2pmMAkGBSsOAwIaBQCgeDAYBgor
+# BgEEAYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEE
+# MBwGCisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRG
+# Jc0SwqnDaKYMsc3BdZKF8IMZTTANBgkqhkiG9w0BAQEFAASCAgA2PRniIVgzRCNo
+# ZimcjvimuBXx9G3U3lk+2mCPc6mUHv8kcSKI3OcY5pzuZbTsvjDuCIvL18qnD4ca
+# eoCD0roIZA8sKlVchnobe2tshr+XzBIXrp2o50hoxcuT/V2tHvK+BmYvbnsKxbHi
+# pg0gI/whFQI3uJrcq3GXEL30c1SgtTxLelZHi+9nhjGSV4z+xJ0WnoCRzGNw7vJS
+# 7rqKsW45XJm/dXP4CFjL+HH5giiQk0leR4FhmyT3jkAzeCD94VQ+N9ycPZG/ekgg
+# YriNbaX8nnEKwRpC/7TjY069M4ACjDJ+q8fI8G9Wnt4KBZNQirlHv1zlIJ6xQ6bV
+# AR/XCjCZLR03EI0dPEol2TCLv+9LBpkBVGCd6YqoHPG0ICPUY8IHd2rlvRpeP3hW
+# 7tZc2O35rahj5DYBkXsNknRJK6sqOAeIAcpp6zl+2ewcqij9IeyR+NiVS0JZU+cH
+# thLc6b4ql/9yRLaq+vzEmR9Trij+d19WX54m0GfxFn8n5pSTvITzvU3EI8EqtyPM
+# ELDVVilKCIsElzbvVfxhRvi0dIRp2XIfaUq0obzUkflosxmLJClLEFvrsFOgbTNx
+# 7WObE/OdYzScOQqSm6iSDi+mPwtVHnu2ZNDsL+G2vgEgwNHEDIjVySfpxkdDyGLC
+# fBWwnhKpCNc0wPZRY4X+59oCfTfxhA==
+# SIG # End signature block
