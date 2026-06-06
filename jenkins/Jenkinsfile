@@ -58,7 +58,6 @@ pipeline {
 
         stage('SAST - Semgrep') {
             steps {
-                // testing purpose, for production remove "|| true" to fail the build on Semgrep findings
                 sh '''
                     docker run --rm \
                         -v ${WORKSPACE}:/src \
@@ -76,7 +75,6 @@ pipeline {
 
         stage('SCA - Trivy Filesystem') {
             steps {
-                // testing purpose, for production remove "|| true" to fail the build on Trivy findings
                 sh '''
                     docker run --rm \
                         -v ${WORKSPACE}:/src \
@@ -113,16 +111,8 @@ pipeline {
                             --format json \
                             --output /src/trivy-image-results.json \
                             --severity HIGH,CRITICAL \
-                            --exit-code 0 \
+                            --exit-code 1 \
                             ${IMAGE_NAME}:${IMAGE_TAG}
-                """
-                sh """
-                    CRITICAL=\$(grep -c '"Severity":"CRITICAL"' ${WORKSPACE}/trivy-image-results.json || true)
-                    echo "Critical vulnerabilities found: \$CRITICAL"
-                    if [ "\$CRITICAL" -gt "0" ]; then
-                        echo "CRITICAL vulnerabilities detected - failing build!"
-                        exit 1
-                    fi
                 """
             }
             post {
@@ -139,7 +129,7 @@ pipeline {
                     string(credentialsId: 'DB_USER', variable: 'DB_USER'),
                     string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD')
                 ]) { 
-                    sh """
+                    sh '''
                         docker stop ${APP_NAME}-staging || true
                         docker rm ${APP_NAME}-staging || true
                         docker run -d \
@@ -150,7 +140,7 @@ pipeline {
                             -e DB_PASSWORD=${DB_PASSWORD} \
                             -e SPRING_DATASOURCE_URL=jdbc:postgresql://securefinops-postgres-local:5432/transactiondb \
                             ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                    '''
                 }
             }
         }
