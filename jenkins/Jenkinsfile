@@ -190,10 +190,6 @@ pipeline {
             """
         }
         always {
-            script {
-                def buildLog = currentBuild.rawBuild.getLog(1000).join('\n')
-                writeFile file: 'pipeline-report.txt', text: buildLog
-            }
             withCredentials([
                 string(credentialsId: 'NOTIFICATION_EMAIL', variable: 'NOTIFICATION_EMAIL')
             ]) {
@@ -203,11 +199,13 @@ pipeline {
                         <h2>Pipeline ${currentBuild.result}</h2>
                         <p><b>Job:</b> ${JOB_NAME}</p>
                         <p><b>Build:</b> #${BUILD_NUMBER}</p>
+                        <p><b>Branch:</b> ${GIT_BRANCH}</p>
+                        <p><b>Commit:</b> ${GIT_COMMIT}</p>
                         <p><b>Console:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
                     """,
                     mimeType: 'text/html',
                     to: "${NOTIFICATION_EMAIL}",
-                    attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json,pipeline-report.txt'
+                    attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json'
                 )
             }
             cleanWs(
@@ -218,6 +216,6 @@ pipeline {
                 notFailBuild: true,
                 patterns: [[pattern: '.git', type: 'EXCLUDE']]
             )
-            }
+        }
     }
 }
