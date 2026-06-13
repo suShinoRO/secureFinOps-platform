@@ -20,24 +20,44 @@ pipeline {
             }
         }
 
+    stage('IaC Scan - Checkov') {
+        steps {
+            sh """
+                docker run --rm \
+                    --volumes-from securefinops-jenkins-local \
+                    bridgecrew/checkov:latest \
+                    --directory ${WORKSPACE}/infra \
+                    --output json \
+                    --soft-fail \
+                    --quiet \
+                    > ${WORKSPACE}/checkov-results.json 2>/dev/null || true
+
+                echo "File size: \$(wc -c < ${WORKSPACE}/checkov-results.json 2>/dev/null || echo 0) bytes"
+            """
+        }
+        post {
+            always {
+                archiveArtifacts artifacts: 'checkov-results.json',
+                                allowEmptyArchive: true
+            }
+        }
+    }
+
         stage('Secret Scan - Gitleaks') {
             steps {
                 sh """
                     docker run --rm \
-                        -v \${WORKSPACE}:/repo \
+                        --volumes-from securefinops-jenkins-local \
                         zricethezav/gitleaks:latest \
                         detect \
-                            --source /repo \
+                            --source ${WORKSPACE} \
                             --no-git \
                             --report-format json \
-                            --report-path /repo/gitleaks-results.json \
+                            --report-path ${WORKSPACE}/gitleaks-results.json \
                             --exit-code 0 \
                             --verbose
-                    
-                    echo "File size: \$(wc -c < \${WORKSPACE}/gitleaks-results.json) bytes"
-                    
-                    LEAKS=\$(grep -c '"RuleID"' \${WORKSPACE}/gitleaks-results.json || echo 0)
-                    echo "Secrets leaked: \$LEAKS"
+
+                    echo "File size: \$(wc -c < ${WORKSPACE}/gitleaks-results.json 2>/dev/null || echo 0) bytes"
                 """
             }
             post {
@@ -107,33 +127,41 @@ pipeline {
 
         stage('SAST - Semgrep') {
             steps {
-                sh '''
+                sh """
                     docker run --rm \
-                        -v ${WORKSPACE}:/src \
+                        --volumes-from securefinops-jenkins-local \
                         semgrep/semgrep:latest \
                         semgrep scan \
                             --config p/java \
                             --config p/owasp-top-ten \
                             --config p/secrets \
                             --json \
-                            --output /src/semgrep-results.json \
-                            /src
-                '''
+                            --output ${WORKSPACE}/semgrep-results.json \
+                            ${WORKSPACE}
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'semgrep-results.json',
+                                    allowEmptyArchive: true
+                }
             }
         }
 
         stage('SCA - Trivy Filesystem') {
             steps {
-                sh '''
+                sh """
                     docker run --rm \
-                        -v ${WORKSPACE}:/src \
+                        --volumes-from securefinops-jenkins-local \
+                        -v trivy-cache:/root/.cache/trivy \
+                        -e TRIVY_OFFLINE_SCAN=true \
                         aquasec/trivy:latest \
                         fs \
                             --format json \
-                            --output /src/trivy-fs-results.json \
+                            --output ${WORKSPACE}/trivy-fs-results.json \
                             --severity HIGH,CRITICAL \
-                            /src
-                '''
+                            ${WORKSPACE}
+                """
             }
         }
 
@@ -251,14 +279,14 @@ pipeline {
                     attachmentsPattern: 'semgrep-results.json,trivy-fs-results.json,trivy-image-results.json'
                 )
             }
-            cleanWs(
+            /*cleanWs(
                 cleanWhenSuccess: true,
                 cleanWhenFailure: true,
                 cleanWhenAborted: true,
                 deleteDirs: true,
                 notFailBuild: true,
                 patterns: [[pattern: '.git', type: 'EXCLUDE']]
-            )
+            )*/
         }
     }
 }
