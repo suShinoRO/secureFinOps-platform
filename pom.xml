@@ -30,6 +30,7 @@
 		<java.version>21</java.version>
 		<tomcat.version>11.0.22</tomcat.version>
     	<postgresql.version>42.7.11</postgresql.version>
+		<sonar.host.url>http://securefinops-sonarqube-local:9000</sonar.host.url>
 	</properties>
 	<dependencies>
 		<dependency>
