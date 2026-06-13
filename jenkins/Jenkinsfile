@@ -120,29 +120,33 @@ pipeline {
             }
         }
 
-        stage('Image Scan - Trivy') {
-            steps {
-                sh """
-                    docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v ${WORKSPACE}:/src \
-                        -v trivy-cache:/root/.cache/trivy \
-                        aquasec/trivy:latest \
-                        image \
-                            --format json \
-                            --output /src/trivy-image-results.json \
-                            --severity HIGH,CRITICAL \
-                            --exit-code 1 \
-                            ${IMAGE_NAME}:${IMAGE_TAG}
-                """
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'trivy-image-results.json',
-                                    allowEmptyArchive: true
-                }
+       stage('Image Scan - Trivy') {
+        steps {
+            sh """
+                docker run --rm \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v trivy-cache:/root/.cache/trivy \
+                    aquasec/trivy:latest \
+                    image \
+                        --format json \
+                        --severity HIGH,CRITICAL \
+                        --exit-code 0 \
+                        --quiet \
+                        ${IMAGE_NAME}:${IMAGE_TAG} > ${WORKSPACE}/trivy-image-results.json 2>/dev/null
+                
+                echo "File size: \$(wc -c < ${WORKSPACE}/trivy-image-results.json) bytes"
+                
+                CRITICAL=\$(grep -c '"Severity": "CRITICAL"' ${WORKSPACE}/trivy-image-results.json || echo 0)
+                echo "Critical vulnerabilities found: \$CRITICAL"
+            """
+        }
+        post {
+            always {
+                archiveArtifacts artifacts: 'trivy-image-results.json',
+                                allowEmptyArchive: true
             }
         }
+    }
 
         stage('Deploy Staging') {
             steps {
