@@ -28,6 +28,7 @@ pipeline {
                         zricethezav/gitleaks:latest \
                         detect \
                             --source /repo \
+                            --no-git \
                             --report-format json \
                             --report-path /repo/gitleaks-results.json \
                             --exit-code 0 \
