@@ -20,45 +20,56 @@ pipeline {
             }
         }
 
-    stage('IaC Scan - Checkov') {
-        steps {
-            sh """
-                docker run --rm \
-                    --volumes-from securefinops-jenkins-local \
-                    bridgecrew/checkov:latest \
-                    --directory ${WORKSPACE}/infra \
-                    --output json \
-                    --soft-fail \
-                    --quiet \
-                    > ${WORKSPACE}/checkov-results.json 2>/dev/null || true
+        stage('IaC Scan - Checkov') {
+            steps {
+                script {
+                    def status = sh(
+                        script: """
+                            docker run --rm \
+                                --volumes-from securefinops-jenkins-local \
+                                bridgecrew/checkov:latest \
+                                --directory ${WORKSPACE}/infra \
+                                --output json \
+                                --soft-fail \
+                                --quiet \
+                                > ${WORKSPACE}/checkov-results.json 2>/dev/null || true
 
-                echo "File size: \$(wc -c < ${WORKSPACE}/checkov-results.json 2>/dev/null || echo 0) bytes"
-            """
-        }
-        post {
-            always {
-                archiveArtifacts artifacts: 'checkov-results.json',
-                                allowEmptyArchive: true
+                            echo "File size: \$(wc -c < ${WORKSPACE}/checkov-results.json 2>/dev/null || echo 0) bytes"
+                        """,
+                        returnStatus: true
+                    )
+                    env.CHECKOV_STATUS = (status == 0) ? '<span style="color:green;font-weight:bold;">PASSED</span>' : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'checkov-results.json',
+                                    allowEmptyArchive: true
+                }
             }
         }
-    }
 
         stage('Secret Scan - Gitleaks') {
             steps {
-                sh """
-                    docker run --rm \
-                        --volumes-from securefinops-jenkins-local \
-                        zricethezav/gitleaks:latest \
-                        detect \
-                            --source ${WORKSPACE} \
-                            --no-git \
-                            --report-format json \
-                            --report-path ${WORKSPACE}/gitleaks-results.json \
-                            --exit-code 0 \
-                            --verbose
-
-                    echo "File size: \$(wc -c < ${WORKSPACE}/gitleaks-results.json 2>/dev/null || echo 0) bytes"
-                """
+                script {
+                    def status = sh(
+                        script: '''
+                            docker run --rm \
+                                --volumes-from securefinops-jenkins-local \
+                                zricethezav/gitleaks:latest \
+                                detect \
+                                    --source ${WORKSPACE} \
+                                    --no-git \
+                                    --report-format json \
+                                    --report-path ${WORKSPACE}/gitleaks-results.json \
+                                    --exit-code 0 \
+                                    --verbose
+                        ''',
+                        returnStatus: true
+                    )
+                    env.GITLEAKS_STATUS = (status == 0) ? '<span style="color:green;font-weight:bold;">PASSED</span>' : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                }
+                
             }
             post {
                 always {
@@ -76,7 +87,7 @@ pipeline {
 
         stage('Unit Tests') {
             steps {
-                   withCredentials([
+                    withCredentials([
                     string(credentialsId: 'DB_USER', variable: 'DB_USER'),
                     string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD')
                 ]) {
@@ -176,33 +187,33 @@ pipeline {
             }
         }
 
-       stage('Image Scan - Trivy') {
-        steps {
-            sh """
-                docker run --rm \
-                    -v /var/run/docker.sock:/var/run/docker.sock \
-                    -v trivy-cache:/root/.cache/trivy \
-                    aquasec/trivy:latest \
-                    image \
-                        --format json \
-                        --severity HIGH,CRITICAL \
-                        --exit-code 0 \
-                        --quiet \
-                        ${IMAGE_NAME}:${IMAGE_TAG} > ${WORKSPACE}/trivy-image-results.json 2>/dev/null
-                
-                echo "File size: \$(wc -c < ${WORKSPACE}/trivy-image-results.json) bytes"
-                
-                CRITICAL=\$(grep -c '"Severity": "CRITICAL"' ${WORKSPACE}/trivy-image-results.json || echo 0)
-                echo "Critical vulnerabilities found: \$CRITICAL"
-            """
-        }
-        post {
-            always {
-                archiveArtifacts artifacts: 'trivy-image-results.json',
-                                allowEmptyArchive: true
+        stage('Image Scan - Trivy') {
+            steps {
+                sh """
+                    docker run --rm \
+                        -v /var/run/docker.sock:/var/run/docker.sock \
+                        -v trivy-cache:/root/.cache/trivy \
+                        aquasec/trivy:latest \
+                        image \
+                            --format json \
+                            --severity HIGH,CRITICAL \
+                            --exit-code 0 \
+                            --quiet \
+                            ${IMAGE_NAME}:${IMAGE_TAG} > ${WORKSPACE}/trivy-image-results.json 2>/dev/null
+                    
+                    echo "File size: \$(wc -c < ${WORKSPACE}/trivy-image-results.json) bytes"
+                    
+                    CRITICAL=\$(grep -c '"Severity": "CRITICAL"' ${WORKSPACE}/trivy-image-results.json || echo 0)
+                    echo "Critical vulnerabilities found: \$CRITICAL"
+                """
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-image-results.json',
+                                    allowEmptyArchive: true
+                }
             }
         }
-    }
 
         stage('Deploy Staging') {
             steps {
@@ -267,12 +278,14 @@ pipeline {
                 emailext (
                     subject: "${currentBuild.result} - ${JOB_NAME} #${BUILD_NUMBER}",
                     body: """
-                        <h2>Pipeline ${currentBuild.result}</h2>
-                        <p><b>Job:</b> ${JOB_NAME}</p>
-                        <p><b>Build:</b> #${BUILD_NUMBER}</p>
-                        <p><b>Branch:</b> ${GIT_BRANCH}</p>
-                        <p><b>Commit:</b> ${GIT_COMMIT}</p>
-                        <p><b>Console:</b> <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                        <h2>Pipeline ${currentBuild.result} - Build: #${BUILD_NUMBER}</h2>
+                        <p>Branch:<b> ${GIT_BRANCH}</b> - Commit:<b> ${GIT_COMMIT}</b></p>
+                        <h3>Details:</h3>
+                        <table border="1" cellpadding="5" cellspacing="0">
+                            <tr><th>Stage</th><th>Status</th></tr>
+                            <tr><td>Secret Scan - Gitleaks</td><td>${env.GITLEAKS_STATUS ?: 'N/A'}</td></tr>
+                            <tr><td>IaC Scan - Checkov</td><td>${env.CHECKOV_STATUS ?: 'N/A'}</td></tr>
+                        </table>
                     """,
                     mimeType: 'text/html',
                     to: "${NOTIFICATION_EMAIL}",
