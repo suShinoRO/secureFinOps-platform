@@ -91,12 +91,21 @@ pipeline {
                     string(credentialsId: 'DB_USER', variable: 'DB_USER'),
                     string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD')
                 ]) {
-                    sh '''
-                        mvn test \
-                            -Dspring.datasource.url=jdbc:postgresql://securefinops-postgres-local:5432/transactiondb \
-                            -Dspring.datasource.username=${DB_USER} \
-                            -Dspring.datasource.password=${DB_PASSWORD}
-                    '''
+                    script {
+                        def status = sh(
+                            script: '''
+                                        mvn test \
+                                            -Dspring.datasource.url=jdbc:postgresql://securefinops-postgres-local:5432/transactiondb \
+                                            -Dspring.datasource.username=${DB_USER} \
+                                            -Dspring.datasource.password=${DB_PASSWORD}
+                                    ''',
+                            returnStatus: true
+                        )
+                        env.UNIT_TEST_STATUS = (status == 0) ? '<span style="color:green;font-weight:bold;">PASSED</span>' : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                        if (status != 0) {
+                            error("Unit tests failed")
+                        }
+                    }
                 }
             }
             post {
@@ -121,8 +130,14 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                script {
+                    def qg = waitForQualityGate(abortPipeline: false)
+                    env.SONARQUBE_STATUS = (qg.status == 'OK') 
+                        ? '<span style="color:green;font-weight:bold;">PASSED</span>' 
+                        : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                    if (qg.status != 'OK') {
+                        error("Quality Gate failed: ${qg.status}")
+                    }
                 }
             }
         }
@@ -138,18 +153,26 @@ pipeline {
 
         stage('SAST - Semgrep') {
             steps {
-                sh """
-                    docker run --rm \
-                        --volumes-from securefinops-jenkins-local \
-                        semgrep/semgrep:latest \
-                        semgrep scan \
-                            --config p/java \
-                            --config p/owasp-top-ten \
-                            --config p/secrets \
-                            --json \
-                            --output ${WORKSPACE}/semgrep-results.json \
-                            ${WORKSPACE}
-                """
+                script{
+                    def status = sh(
+                        script: """
+                            docker run --rm \
+                                --volumes-from securefinops-jenkins-local \
+                                semgrep/semgrep:latest \
+                                semgrep scan \
+                                    --config p/java \
+                                    --config p/owasp-top-ten \
+                                    --config p/secrets \
+                                    --json \
+                                    --output ${WORKSPACE}/semgrep-results.json \
+                                    ${WORKSPACE}
+                        """,
+                        returnStatus: true
+                    )
+                    env.SEMGREP_STATUS = (status == 0) 
+                        ? '<span style="color:green;font-weight:bold;">PASSED</span>' 
+                        : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                }
             }
             post {
                 always {
@@ -161,21 +184,34 @@ pipeline {
 
         stage('SCA - Trivy Filesystem') {
             steps {
-                sh """
-                    docker run --rm \
-                        --volumes-from securefinops-jenkins-local \
-                        -v trivy-cache:/root/.cache/trivy \
-                        -e TRIVY_OFFLINE_SCAN=true \
-                        aquasec/trivy:latest \
-                        fs \
-                            --format json \
-                            --output ${WORKSPACE}/trivy-fs-results.json \
-                            --severity HIGH,CRITICAL \
-                            ${WORKSPACE}
-                """
+                script {
+                    def status = sh(
+                        script: """
+                            docker run --rm \
+                                --volumes-from securefinops-jenkins-local \
+                                -v trivy-cache:/root/.cache/trivy \
+                                -e TRIVY_OFFLINE_SCAN=true \
+                                aquasec/trivy:latest \
+                                fs \
+                                    --format json \
+                                    --output ${WORKSPACE}/trivy-fs-results.json \
+                                    --severity HIGH,CRITICAL \
+                                    ${WORKSPACE}
+                        """,
+                        returnStatus: true
+                    )
+                    env.TRIVY_FS_STATUS = (status == 0) 
+                        ? '<span style="color:green;font-weight:bold;">PASSED</span>' 
+                        : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                }
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'trivy-fs-results.json',
+                                    allowEmptyArchive: true
+                }
             }
         }
-
         stage('Build Docker Image') {
             steps {
                 sh """
@@ -189,23 +225,26 @@ pipeline {
 
         stage('Image Scan - Trivy') {
             steps {
-                sh """
-                    docker run --rm \
-                        -v /var/run/docker.sock:/var/run/docker.sock \
-                        -v trivy-cache:/root/.cache/trivy \
-                        aquasec/trivy:latest \
-                        image \
-                            --format json \
-                            --severity HIGH,CRITICAL \
-                            --exit-code 0 \
-                            --quiet \
-                            ${IMAGE_NAME}:${IMAGE_TAG} > ${WORKSPACE}/trivy-image-results.json 2>/dev/null
-                    
-                    echo "File size: \$(wc -c < ${WORKSPACE}/trivy-image-results.json) bytes"
-                    
-                    CRITICAL=\$(grep -c '"Severity": "CRITICAL"' ${WORKSPACE}/trivy-image-results.json || echo 0)
-                    echo "Critical vulnerabilities found: \$CRITICAL"
-                """
+                script {
+                    def status = sh(
+                        script: """
+                            docker run --rm \
+                                -v /var/run/docker.sock:/var/run/docker.sock \
+                                -v trivy-cache:/root/.cache/trivy \
+                                aquasec/trivy:latest \
+                                image \
+                                    --format json \
+                                    --severity HIGH,CRITICAL \
+                                    --exit-code 0 \
+                                    --quiet \
+                                    ${IMAGE_NAME}:${IMAGE_TAG} > ${WORKSPACE}/trivy-image-results.json 2>/dev/null
+                        """,
+                        returnStatus: true
+                    )
+                    env.TRIVY_IMAGE_STATUS = (status == 0) 
+                        ? '<span style="color:green;font-weight:bold;">PASSED</span>' 
+                        : '<span style="color:red;font-weight:bold;">FAILED</span>'
+                }
             }
             post {
                 always {
@@ -285,6 +324,11 @@ pipeline {
                             <tr><th>Stage</th><th>Status</th></tr>
                             <tr><td>Secret Scan - Gitleaks</td><td>${env.GITLEAKS_STATUS ?: 'N/A'}</td></tr>
                             <tr><td>IaC Scan - Checkov</td><td>${env.CHECKOV_STATUS ?: 'N/A'}</td></tr>
+                            <tr><td>Unit Tests</td><td>${env.UNIT_TEST_STATUS ?: 'N/A'}</td></tr>
+                            <tr><td>SAST - SonarQube</td><td>${env.SONARQUBE_STATUS ?: 'N/A'}</td></tr>
+                            <tr><td>SAST - Semgrep</td><td>${env.SEMGREP_STATUS ?: 'N/A'}</td></tr>
+                            <tr><td>SCA - Trivy Filesystem</td><td>${env.TRIVY_FS_STATUS ?: 'N/A'}</td></tr>
+                            <tr><td>Image Scan - Trivy</td><td>${env.TRIVY_IMAGE_STATUS ?: 'N/A'}</td></tr>
                         </table>
                     """,
                     mimeType: 'text/html',
